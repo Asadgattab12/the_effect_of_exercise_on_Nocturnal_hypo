@@ -1,0 +1,134 @@
+#reset workspace and load the requried packages
+rm (list = ls())
+library(dplyr)
+library(lme4)
+
+# Load final joined table
+final_output_with_hypos <- read.csv(
+  "Type_1_final_table_with_night_hypos.csv",
+  stringsAsFactors = FALSE
+)
+
+# Create nocturnal hypo indicator for level 1 hypos
+final_output_with_hypos <- final_output_with_hypos %>%
+  mutate(
+    nocturnal_hypo = ifelse(hypo_lvl1_night == 1, 1, 0)
+  )
+
+# Reshape to one row per participant separating ech time window stepping data
+daily <- final_output_with_hypos %>%
+  select(
+    Hypometrics_ID,
+    Date,
+    Time.window,
+    Total.steps,
+    nocturnal_hypo
+  ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(Hypometrics_ID, Date, nocturnal_hypo),
+    names_from = Time.window,
+    values_from = Total.steps,
+    names_prefix = "steps_"
+  ) %>%
+  mutate(
+    steps_Morning = ifelse(
+      is.na(steps_Morning), 0, steps_Morning
+    ),
+    steps_Afternoon = ifelse(
+      is.na(steps_Afternoon), 0, steps_Afternoon
+    ),
+    Hypometrics_ID = as.factor(Hypometrics_ID)
+  )
+
+cat("Participant-days:", nrow(daily), "\n")
+cat(
+  "Participants:",
+  length(unique(daily$Hypometrics_ID)),
+  "\n"
+)
+cat(
+  "Nocturnal hypo rate:",
+  round(mean(daily$nocturnal_hypo) * 100, 2),
+  "%\n\n"
+)
+
+# Scale steps to thousands for odds-ratio improvement 
+daily <- daily %>%
+  mutate(
+    morning_steps_k = steps_Morning / 1000,
+    afternoon_steps_k = steps_Afternoon / 1000
+  )
+
+# Model 1: morning total steps
+model1 <- glmer(
+  nocturnal_hypo ~ morning_steps_k +
+    (1 | Hypometrics_ID),
+  data = daily,
+  family = binomial(link = "logit"),
+  control = glmerControl(
+    optimizer = "bobyqa",
+    optCtrl = list(maxfun = 2e5)
+  )
+)
+cat("MODEL 1: Morning steps")
+print(summary(model1))
+
+# Calculate odds ratios and 95% Wald confidence intervals
+model1_CI <- confint(
+  model1,
+  parm = "beta_",
+  method = "Wald"
+)
+model1_OR <- exp(cbind(
+  OR = fixef(model1),
+  model1_CI
+))
+cat("\nOdds ratios and 95% Wald CI (Model 1):\n")
+print(model1_OR)
+
+# Model 2: afternoon total steps
+model2 <- glmer(
+  nocturnal_hypo ~ afternoon_steps_k +
+    (1 | Hypometrics_ID),
+  data = daily,
+  family = binomial(link = "logit"),
+  control = glmerControl(
+    optimizer = "bobyqa",
+    optCtrl = list(maxfun = 2e5)
+  )
+)
+cat("MODEL 2: Afternoon steps")
+print(summary(model2))
+
+model2_CI <- confint(
+  model2,
+  parm = "beta_",
+  method = "Wald"
+)
+model2_OR <- exp(cbind(
+  OR = fixef(model2),
+  model2_CI
+))
+cat("\nOdds ratios and 95% Wald CI (Model 2):\n")
+print(model2_OR)
+
+#Save all outputs
+saveRDS(model1, "model1_morning_steps.rds")
+saveRDS(model2, "model2_afternoon_steps.rds")
+
+#export log odd ratio models 
+write.csv(
+  model1_OR,
+  "model1_morning_steps_wald_OR.csv"
+)
+write.csv(
+  model2_OR,
+  "model2_afternoon_steps_wald_OR.csv"
+)
+
+write.csv(
+  daily,
+  "daily_model_dataset.csv",
+  row.names = FALSE
+)
+
