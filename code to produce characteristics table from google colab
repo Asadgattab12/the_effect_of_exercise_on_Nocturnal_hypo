@@ -1,0 +1,102 @@
+#code to produce characteristics table using google colab.
+#code to produce characteristics tables
+
+import pyreadr
+import pandas as pd
+import numpy as np
+from tableone import TableOne
+
+from google.colab import files
+
+files.upload()
+# Load baseline R data
+R_characteristics = pyreadr.read_r(
+    "DB_VERSION2_Trial_baseline_characteristics.RDa"
+)
+
+# Extract the data frame stored inside the RData file
+baseline = next(iter(R_characteristics.values()))
+
+# Load final analysis dataset
+final_data = pd.read_csv(
+    "Type_1_final_table_with_night_hypos.csv"
+)
+
+# extract useful columns for charactersistics table
+#assign the data columns to variables for analysis use 
+baseline["Hypometrics_ID"] = (
+    baseline["Hypometrics_ID"].astype(str)
+)
+
+final_data["Hypometrics_ID"] = (
+    final_data["Hypometrics_ID"].astype(str)
+)
+
+participant_ids = (
+    final_data["Hypometrics_ID"]
+    .drop_duplicates()
+)
+
+characteristics = baseline[
+    baseline["Hypometrics_ID"].isin(participant_ids)
+].drop_duplicates(
+    subset="Hypometrics_ID"
+).copy()
+
+# Convert HbA1c to numeric data because of mixed data both mmol and %
+characteristics["hba1c"] = pd.to_numeric(
+    characteristics["hba1c"],
+    errors="coerce"
+)
+
+# copy all values
+characteristics["hba1c_mmol_mol"] = characteristics["hba1c"]
+
+# Convert the 34 percentage values
+percent_rows = characteristics["hba1c_unit"] == "%"
+
+characteristics.loc[percent_rows, "hba1c_mmol_mol"] = (
+    characteristics.loc[percent_rows, "hba1c"] - 2.15
+) * 10.929
+
+# Leave na data as missing
+characteristics.loc[
+    characteristics["hba1c_unit"].isna(),
+    "hba1c_mmol_mol"
+] = np.nan
+
+#rename collumns from hypo table for use in characteristics table. 
+table_data = characteristics.rename(
+    columns={
+        "sex": "Sex",
+        "smoker": "Smoking status",
+        "frequency_alcohol_consumption": "Alcohol frequency",
+        "hba1c_mmol_mol": "HbA1c (mmol/mol)" }
+)
+
+#set columns for table
+columns = [
+    "Sex",
+    "Smoking status",
+    "Alcohol frequency",
+    "HbA1c (mmol/mol)"
+]
+
+# set categorical variables for table use
+categorical = [
+    "Sex",
+    "Smoking status",
+    "Alcohol frequency"
+]
+
+#set parameters and plot table
+table1 = TableOne(
+    table_data,
+    columns=columns,
+    categorical=categorical,
+    missing=True,
+    overall=True
+)
+
+print(table1)
+
