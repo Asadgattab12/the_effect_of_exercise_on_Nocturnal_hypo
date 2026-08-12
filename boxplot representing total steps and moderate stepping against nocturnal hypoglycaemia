@@ -1,0 +1,110 @@
+#code to represent total stepping and moderate stepping boxplots for morning
+#and afternoon time windows by level1 nocturnal hypos. 
+
+#empty work space and load packages for analysis use
+rm(list = ls())
+
+library(dplyr)
+library(ggplot2)
+
+#load dataset with stepping data and nocturnal hypos
+final_output_with_hypos <- read.csv(
+  "Type_1_final_table_with_night_hypos.csv",
+  stringsAsFactors = FALSE
+)
+
+# Prepare data for box plotting
+# Retain Morning and Afternoon data and convert the 1 and 0
+# hypos outcome into labelled categories for plotting
+
+plot_data <- final_output_with_hypos %>%
+  filter(Time.window %in% c("Morning", "Afternoon")) %>%
+  mutate(
+    Time.window = factor(
+      Time.window,
+      levels = c("Morning", "Afternoon")
+    ),
+    hypo_status = factor(
+      hypo_lvl1_night,
+      levels = c(0, 1),
+      labels = c(
+        "No nocturnal hypo",
+        "Nocturnal hypo"
+      )
+    )
+  )
+# create first boxplot comparing total step data of morning and afternoon time
+#by level 1 nocturnal hypos
+p_box_steps <- ggplot(
+  plot_data,
+  aes(
+    x = hypo_status,
+    y = Total.steps,
+    fill = hypo_status
+  )
+) +
+  geom_boxplot(
+    width = 0.6,
+    outlier.alpha = 0.25
+  ) +
+  facet_wrap(~ Time.window) +
+  
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Total Steps by level1 Nocturnal hypoglycaemia",
+    x = NULL,
+    y = "Total steps"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank()
+  )
+
+p_box_steps
+#save boxplot as image for use in report
+ggsave(
+  "figure_boxplot_steps.png",
+  p_box_steps,
+  width = 8,
+  height = 5,
+  dpi = 300
+)
+
+# create second boxplot comparing moderate step data of morning and afternoon
+#by level 1 nocturnal hypos
+p_box_moderate <- ggplot(
+  plot_data,
+  aes(
+    x = hypo_status,
+    y = Total.minutes.of.moderate.steps,
+    fill = hypo_status
+  )
+) +
+  geom_boxplot(
+    width = 0.6,
+    outlier.alpha = 0.25
+  ) +
+  facet_wrap(~ Time.window) +
+
+  labs(
+    title = " Moderate steps minutes by level 1 Nocturnal hypoglycaemia",
+    x = NULL,
+    y = "Moderate steps in minutes"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank()
+  )
+
+p_box_moderate
+#save the moderate steps boxplot
+ggsave(
+  "figure_boxplot_moderate_minutes.png",
+  p_box_moderate,
+  width = 8,
+  height = 5,
+  dpi = 300
+)
+
