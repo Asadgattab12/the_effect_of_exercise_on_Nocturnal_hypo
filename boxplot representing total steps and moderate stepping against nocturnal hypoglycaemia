@@ -33,6 +33,28 @@ plot_data <- final_output_with_hypos %>%
       )
     )
   )
+summary_of_total_steps <- plot_data %>%
+  group_by(Time.window, hypo_status) %>%
+  summarise(
+    Q1     = quantile(Total.steps, 0.25, na.rm = TRUE),
+    Median = median(Total.steps, na.rm = TRUE),
+    Q3     = quantile(Total.steps, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(summary_of_total_steps)
+
+# Summary stats (median, Q1, Q3) for Moderate steps minutes
+summary_moderate_stepping <- plot_data %>%
+  group_by(Time.window, hypo_status) %>%
+  summarise(
+    Q1     = quantile(Total.minutes.of.moderate.steps, 0.25, na.rm = TRUE),
+    Median = median(Total.minutes.of.moderate.steps, na.rm = TRUE),
+    Q3     = quantile(Total.minutes.of.moderate.steps, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(summary_moderate_stepping)
 # create first boxplot comparing total step data of morning and afternoon time
 #by level 1 nocturnal hypos
 p_box_steps <- ggplot(
@@ -107,4 +129,3 @@ ggsave(
   height = 5,
   dpi = 300
 )
-
