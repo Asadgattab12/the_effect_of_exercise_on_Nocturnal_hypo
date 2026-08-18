@@ -52,7 +52,7 @@ characteristics["hba1c"] = pd.to_numeric(
 # copy all values
 characteristics["hba1c_mmol_mol"] = characteristics["hba1c"]
 
-# Convert the 34 percentage values
+# Convert the percentage values
 percent_rows = characteristics["hba1c_unit"] == "%"
 
 characteristics.loc[percent_rows, "hba1c_mmol_mol"] = (
@@ -65,28 +65,26 @@ characteristics.loc[
     "hba1c_mmol_mol"
 ] = np.nan
 
-#rename collumns from hypo table for use in characteristics table. 
+# Rename the original columns for use in the characteristics table
 table_data = characteristics.rename(
     columns={
+        "age": "Age (years)",
         "sex": "Sex",
-        "smoker": "Smoking status",
-        "frequency_alcohol_consumption": "Alcohol frequency",
+        "race": "Ethnicity",
         "hba1c_mmol_mol": "HbA1c (mmol/mol)" }
-)
 
-#set columns for table
+ Set columns for table
 columns = [
+    "Age (years)",
     "Sex",
-    "Smoking status",
-    "Alcohol frequency",
+    "Ethnicity",
     "HbA1c (mmol/mol)"
 ]
 
-# set categorical variables for table use
+# Set categorical variables for table
 categorical = [
     "Sex",
-    "Smoking status",
-    "Alcohol frequency"
+    "Ethnicity"
 ]
 
 #set parameters and plot table
@@ -100,3 +98,8 @@ table1 = TableOne(
 
 print(table1)
 
+#create an output to export to excel for further editing
+#and use in report. 
+output_file = "Table_3_participant_characteristics.xlsx"
+table1.to_excel(output_file)
+files.download(output_file)
